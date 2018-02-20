@@ -219,7 +219,7 @@ public class SwordAuthenticator
                         epObo = ePersonService.findByNetid(context, obo);
                     }
 
-                    if (epObo != null)
+                    if ((epObo != null) && allowedToMediate(context))
                     {
                         sc.setOnBehalfOf(epObo);
                         Context oboContext = this.constructContext();
