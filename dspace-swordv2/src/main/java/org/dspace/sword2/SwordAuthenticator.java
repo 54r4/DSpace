@@ -165,6 +165,7 @@ public class SwordAuthenticator
         // first find out if we support on-behalf-of deposit
         boolean mediated = configurationService
                 .getBooleanProperty("swordv2-server.on-behalf-of.enable", false);
+
         if (!mediated && obo != null)
         {
             // user is trying to do a mediated deposit on a repository which does not support it
@@ -221,6 +222,13 @@ public class SwordAuthenticator
 
                     if (epObo != null)
                     {
+                        if (!allowedToSubmitObo(context))
+                        {
+                            log.warn("User is not permitted to submit items on-behalf-of!");
+                            throw new SwordError(UriRegistry.ERROR_MEDIATION_NOT_ALLOWED,
+                                "Mediated deposit to this service is not permitted");
+                        }
+
                         sc.setOnBehalfOf(epObo);
                         Context oboContext = this.constructContext();
                         oboContext.setCurrentUser(epObo);
@@ -1029,6 +1037,43 @@ public class SwordAuthenticator
 
         return false;
     }
+
+    private boolean allowedToSubmitObo(Context context)
+    {
+        //get the configuration
+        String[] mediators = configurationService
+                .getArrayProperty("swordv2-server.on-behalf-of.create.mediators");
+        if (mediators == null || mediators.length==0)
+        {
+            // if there's no explicit list of mediators, then anyone can mediate
+            return true;
+        }
+
+        // get the email and netid of the mediator
+        EPerson eperson = context.getCurrentUser();
+        if (eperson == null)
+        {
+            return false;
+        }
+        String email = eperson.getEmail();
+        String netid = eperson.getNetid();
+
+        for (String mediator : mediators)
+        {
+            String m = mediator.trim();
+            if (email != null && m.equals(email.trim()))
+            {
+                return true;
+            }
+            if (netid != null && m.equals(netid.trim()))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
 
     /**
      * Can the given context submit to the specified DSpace object?
